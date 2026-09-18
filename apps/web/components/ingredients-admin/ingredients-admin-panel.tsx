@@ -11,6 +11,7 @@ import {
   ActionButtonGroup,
   IconActionButton,
 } from "@/components/shared/action-button";
+import { useIngredientNamesQuery } from "@/hooks/config";
 import { MagnifyingGlassIcon, PhotoIcon, SparklesIcon } from "@heroicons/react/16/solid";
 import { Button, Input, Modal, Spinner, TextField, toast } from "@heroui/react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -42,6 +43,7 @@ function toEditing(entry: AdminIngredientDto): EditingIngredient {
   return {
     id: entry.id,
     name: entry.name,
+    altNames: entry.altNames,
     version: entry.version,
     imageUrl: entry.imageUrl,
     recipeCount: entry.recipeCount,
@@ -54,9 +56,9 @@ interface IngredientsAdminPanelProps {
 }
 
 /**
- * Every Ingredient Name recipes use (ADR-0033), to search, give a picture,
- * rename, or delete when unused — with the one being edited in a panel of its
- * own over the list. A drawing takes a while, so the panel
+ * Every Ingredient Name recipes use (ADR-0033), to search, give a picture and
+ * Alternative Names, rename, or delete when unused — with the one being edited
+ * in a panel of its own over the list. A drawing takes a while, so the panel
  * watches for it by re-reading the list until the picture arrives.
  */
 export function IngredientsAdminPanel({ open, onOpenChange }: IngredientsAdminPanelProps) {
@@ -73,6 +75,7 @@ export function IngredientsAdminPanel({ open, onOpenChange }: IngredientsAdminPa
     ),
     enabled: open,
   });
+  const { ingredients: others } = useIngredientNamesQuery({ enabled: open });
   const { data: missing } = useQuery({
     ...trpc.admin.ingredients.missingImageCount.queryOptions(),
     enabled: open,
@@ -176,11 +179,15 @@ export function IngredientsAdminPanel({ open, onOpenChange }: IngredientsAdminPa
           id: editing.id,
           version: editing.version,
           name: editing.name.trim(),
+          altNames: editing.altNames,
         });
         setEditing(null);
       } else {
         // A new ingredient stays open, now able to take a picture.
-        const created = await mutations.create({ name: editing.name.trim() });
+        const created = await mutations.create({
+          name: editing.name.trim(),
+          altNames: editing.altNames,
+        });
 
         setEditing(toEditing(created));
       }
@@ -210,6 +217,35 @@ export function IngredientsAdminPanel({ open, onOpenChange }: IngredientsAdminPa
 
       setEditing((current) => (current?.id === id ? { ...current, imageUrl } : current));
     });
+  };
+
+  /**
+   * Take a clashing name over by folding its ingredient into this one. The
+   * merged ingredient's recipes and Pantry rows come across and its row goes,
+   * so the editor reloads from the survivor.
+   */
+  const handleMerge = (sourceId: string) => {
+    const targetId = editing?.id;
+
+    if (!targetId) return;
+
+    setSaveError(null);
+    void (async () => {
+      try {
+        const survivor = await mutations.merge(sourceId, targetId);
+
+        setEditing({
+          id: survivor.id,
+          name: survivor.name,
+          altNames: survivor.altNames,
+          imageUrl: survivor.imageUrl,
+          recipeCount: survivor.recipeCount,
+          version: survivor.version,
+        });
+      } catch (error) {
+        setSaveError(error instanceof Error ? error.message : String(error));
+      }
+    })();
   };
 
   const handleGenerate = () => {
@@ -350,7 +386,12 @@ export function IngredientsAdminPanel({ open, onOpenChange }: IngredientsAdminPa
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{entry.name}</p>
                     <p className="text-muted truncate text-xs">
-                      {t("usedBy", { count: entry.recipeCount })}
+                      {[
+                        t("usedBy", { count: entry.recipeCount }),
+                        entry.altNames.length > 0 ? entry.altNames.join(", ") : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-1">
@@ -398,6 +439,7 @@ export function IngredientsAdminPanel({ open, onOpenChange }: IngredientsAdminPa
                 setEditing({
                   id: null,
                   name: search.trim(),
+                  altNames: [],
                   version: null,
                   imageUrl: null,
                   recipeCount: 0,
@@ -416,12 +458,14 @@ export function IngredientsAdminPanel({ open, onOpenChange }: IngredientsAdminPa
           isChangingImage={mutations.isChangingImage}
           isGenerating={Boolean(editing?.id && drawing[editing.id])}
           isSaving={mutations.isSaving}
+          others={others}
           onCancel={() => {
             setEditing(null);
             setSaveError(null);
           }}
           onChange={setEditing}
           onGenerate={handleGenerate}
+          onMerge={handleMerge}
           onRemoveImage={handleRemoveImage}
           onSave={() => void handleSave()}
           onUpload={handleUpload}

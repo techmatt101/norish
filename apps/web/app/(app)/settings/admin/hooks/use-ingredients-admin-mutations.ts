@@ -12,9 +12,9 @@ import type {
 /**
  * Ingredient Name administration writes (ADR-0033).
  *
- * Every one of them invalidates rather than patching the cache: a picture
- * changes what the editor, the grocery list and every open recipe show, and a
- * rename changes the text of every recipe using the name.
+ * Every one of them invalidates rather than patching the cache: a picture or
+ * an Alternative Name changes what the editor, the grocery list and every open
+ * recipe show, and a rename changes the text of every recipe using the name.
  */
 export function useIngredientsAdminMutations() {
   const trpc = useTRPC();
@@ -34,6 +34,7 @@ export function useIngredientsAdminMutations() {
   const createMutation = useMutation(trpc.admin.ingredients.create.mutationOptions());
   const updateMutation = useMutation(trpc.admin.ingredients.update.mutationOptions());
   const deleteMutation = useMutation(trpc.admin.ingredients.delete.mutationOptions());
+  const mergeMutation = useMutation(trpc.admin.ingredients.merge.mutationOptions());
   const uploadMutation = useMutation(trpc.admin.ingredients.uploadImage.mutationOptions());
   const removeImageMutation = useMutation(trpc.admin.ingredients.removeImage.mutationOptions());
   const generateMutation = useMutation(trpc.admin.ingredients.generateImage.mutationOptions());
@@ -71,6 +72,18 @@ export function useIngredientsAdminMutations() {
       return updated;
     },
     [updateMutation, invalidate]
+  );
+
+  /** Fold one ingredient into another, then show the survivor. */
+  const merge = useCallback(
+    async (sourceId: string, targetId: string) => {
+      const survivor = await mergeMutation.mutateAsync({ sourceId, targetId });
+
+      await invalidate();
+
+      return survivor;
+    },
+    [mergeMutation, invalidate]
   );
 
   const remove = useCallback(
@@ -122,13 +135,18 @@ export function useIngredientsAdminMutations() {
   return {
     create,
     update,
+    merge,
     remove,
     uploadImage,
     removeImage,
     generateImage,
     generateMissing,
     invalidate,
-    isSaving: createMutation.isPending || updateMutation.isPending || deleteMutation.isPending,
+    isSaving:
+      createMutation.isPending ||
+      updateMutation.isPending ||
+      deleteMutation.isPending ||
+      mergeMutation.isPending,
     isChangingImage: uploadMutation.isPending || removeImageMutation.isPending,
   };
 }

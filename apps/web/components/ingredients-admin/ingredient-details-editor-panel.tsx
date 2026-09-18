@@ -10,35 +10,84 @@ import { ArrowUpTrayIcon, PhotoIcon, SparklesIcon, TrashIcon } from "@heroicons/
 import { Button, Input, Label, Spinner, TextField } from "@heroui/react";
 import { useTranslations } from "next-intl";
 
+import type { IngredientLookupEntry } from "@norish/shared/lib/ingredient-pictures";
 import { ALLOWED_IMAGE_MIME_TYPES } from "@norish/shared/contracts";
+import { MAX_INGREDIENT_ALT_NAMES } from "@norish/shared/contracts/zod";
 import { normalizeGroceryName } from "@norish/shared/lib/normalized-name";
 
-/** Ingredient names are one to eighty characters; the field stops at the eightieth. */
-export const INGREDIENT_NAME_MAX = 80;
+import { AltNamesEditor, INGREDIENT_NAME_MAX } from "./alt-names-editor";
 
 /** An Ingredient Name as it is being edited: a new one where `id` is null. */
 export interface EditingIngredient {
   id: string | null;
   name: string;
+  altNames: string[];
   version: number | null;
   imageUrl: string | null;
   /** How many recipes show the name, which a rename changes. */
   recipeCount: number;
 }
 
+/** Why an Alternative Name in the draft cannot be taken as written. */
+export type AltNameClash =
+  /** Another ingredient already carries it as an Alternative Name of its own. */
+  | { kind: "alt"; name: string; owner: IngredientLookupEntry }
+  /** It is an ingredient in its own right, which merging would settle. */
+  | { kind: "ingredient"; name: string; owner: IngredientLookupEntry };
+
 /**
- * Whether the form can be saved: a name that folds to something and fits. A
- * collision with a name another ingredient already has is the server's to
- * refuse, and it says which ingredient holds it.
+ * The first Alternative Name in the draft another ingredient has a claim on,
+ * and which claim it is. Every ingredient is in the device's cached list, so
+ * both kinds are caught here as they are typed; the server checks again on
+ * save and refuses the same way.
+ */
+export function altNameTakenElsewhere(
+  editing: EditingIngredient,
+  others: readonly IngredientLookupEntry[]
+): AltNameClash | null {
+  for (const altName of editing.altNames) {
+    const folded = normalizeGroceryName(altName);
+
+    if (!folded) continue;
+
+    const candidates = others.filter((other) => other.id !== editing.id);
+    const isIngredient = candidates.find((other) => normalizeGroceryName(other.name) === folded);
+
+    if (isIngredient) {
+      return { kind: "ingredient", name: altName.trim(), owner: isIngredient };
+    }
+
+    const owner = candidates.find((other) =>
+      other.altNames.some((candidate) => normalizeGroceryName(candidate) === folded)
+    );
+
+    if (owner) return { kind: "alt", name: altName.trim(), owner };
+  }
+
+  return null;
+}
+
+/**
+ * Whether the form can be saved: a name that folds to something, and
+ * alternatives that are each usable and not repeated. A collision with another
+ * ingredient is said in the form and checked by the server again on save.
  */
 export function canSaveIngredientDetails(editing: EditingIngredient): boolean {
+  const names = [editing.name, ...editing.altNames];
+  const folded = names.map((name) => normalizeGroceryName(name));
+
   return (
-    normalizeGroceryName(editing.name) !== "" && editing.name.trim().length <= INGREDIENT_NAME_MAX
+    folded.every((name) => name !== "") &&
+    names.every((name) => name.trim().length <= INGREDIENT_NAME_MAX) &&
+    new Set(folded).size === folded.length &&
+    editing.altNames.length <= MAX_INGREDIENT_ALT_NAMES
   );
 }
 
 interface IngredientDetailsEditorPanelProps {
   editing: EditingIngredient | null;
+  /** The ingredients with pictures or Alternative Names, to warn of a clash before saving. */
+  others: readonly IngredientLookupEntry[];
   /** Whether this server can draw a picture at all. */
   canGenerate: boolean;
   /** Whether a picture for this ingredient is being drawn right now. */
@@ -53,6 +102,8 @@ interface IngredientDetailsEditorPanelProps {
   onUpload: (file: File) => void;
   onGenerate: () => void;
   onRemoveImage: () => void;
+  /** Fold the ingredient that owns a clashing name into the one being edited. */
+  onMerge: (sourceId: string) => void;
 }
 
 /**
@@ -63,6 +114,7 @@ interface IngredientDetailsEditorPanelProps {
  */
 export function IngredientDetailsEditorPanel({
   editing,
+  others,
   canGenerate,
   isGenerating,
   isSaving,
@@ -74,6 +126,7 @@ export function IngredientDetailsEditorPanel({
   onUpload,
   onGenerate,
   onRemoveImage,
+  onMerge,
 }: IngredientDetailsEditorPanelProps) {
   const t = useTranslations("settings.admin.ingredients");
   const tActions = useTranslations("common.actions");
@@ -92,7 +145,8 @@ export function IngredientDetailsEditorPanel({
     },
   });
 
-  const canSave = editing !== null && canSaveIngredientDetails(editing);
+  const taken = editing ? altNameTakenElsewhere(editing, others) : null;
+  const canSave = editing !== null && canSaveIngredientDetails(editing) && taken === null;
   const renames = editing?.id && editing.recipeCount > 0;
 
   return (
@@ -136,6 +190,34 @@ export function IngredientDetailsEditorPanel({
               )}
             </TextField>
 
+            <AltNamesEditor
+              altNames={editing.altNames}
+              name={editing.name}
+              onChange={(altNames) => onChange({ ...editing, altNames })}
+            />
+
+            {taken?.kind === "alt" && (
+              <p className="text-danger text-sm" data-testid="ingredients-name-taken">
+                {t("duplicate", { name: taken.name, owner: taken.owner.name })}
+              </p>
+            )}
+            {taken?.kind === "ingredient" && (
+              <div className="flex flex-col gap-2" data-testid="ingredients-name-is-ingredient">
+                <p className="text-danger text-sm">
+                  {t("altNameIsIngredient", { name: taken.name, owner: taken.owner.name })}
+                </p>
+                <Button
+                  className="self-start"
+                  data-testid="merge-ingredient"
+                  isDisabled={isSaving || editing.id === null}
+                  size="sm"
+                  variant="secondary"
+                  onPress={() => onMerge(taken.owner.id)}
+                >
+                  {t("mergeAction", { owner: taken.owner.name })}
+                </Button>
+              </div>
+            )}
             {error && (
               <p className="text-danger text-sm" data-testid="ingredients-save-error">
                 {error}

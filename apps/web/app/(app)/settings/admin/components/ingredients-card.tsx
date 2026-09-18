@@ -9,7 +9,7 @@ import { useTranslations } from "next-intl";
 
 /**
  * Ingredients (ADR-0033): every ingredient name recipes use, where an
- * administrator gives names a picture. The card says
+ * administrator gives names a picture and Alternative Names. The card says
  * what it is and how many pictures exist; the list itself opens in a panel.
  */
 export default function IngredientsCard() {
