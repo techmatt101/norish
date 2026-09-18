@@ -1,4 +1,4 @@
-import { asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import z from "zod";
 
 import type { UnitsMap } from "@norish/config/zod/server-config";
@@ -59,12 +59,123 @@ export async function getUnitsForNormalization(): Promise<UnitsMap> {
 
 /**
  * The columns a new Ingredient Name row is written with: the name and its
- * folded form, which is what the Pantry matches on (ADR-0032) and what lets a
- * name show a picture (ADR-0033). Used by every path that mints Ingredient
- * Names, so a name is folded the moment it exists.
+ * folded form, which is what every other name is matched against (ADR-0034)
+ * and what the Pantry compares (ADR-0032). Used by every path that mints
+ * Ingredient Names, so a name is folded the moment it exists.
  */
 function ingredientNameRowValues(names: readonly string[]) {
   return names.map((name) => ({ name, normalizedName: normalizeGroceryName(name) }));
+}
+
+/** The one key a name is looked up by, here and in the browser. */
+function nameKey(name: string): string {
+  return normalizeGroceryName(name);
+}
+
+/** How well a row answers to a name; the lowest rank wins. */
+function matchRank(row: IngredientDto, lower: string, fold: string): number | null {
+  if (row.name.toLowerCase() === lower) return 0;
+  if (row.normalizedName !== null && row.normalizedName === fold) return 1;
+  if (row.normalizedAltNames.includes(fold)) return 2;
+
+  return null;
+}
+
+/**
+ * The Ingredient Name each of these names *is*, keyed by the name's fold.
+ *
+ * A name is the row that carries it: as its own name, as the same name folded,
+ * or as one of its Alternative Names (ADR-0034). That last case is the whole
+ * point of Alternative Names — "aubergine" is the Eggplant row, so a recipe
+ * that says aubergine does not mint a second ingredient with a second picture.
+ *
+ * Names with no row are simply absent, which is what lets the caller mint only
+ * those.
+ */
+async function findIngredientsForNames(
+  runner: { select: typeof db.select },
+  names: readonly string[]
+): Promise<Map<string, IngredientDto>> {
+  const lowers = [...new Set(names.map((name) => name.toLowerCase()))];
+  const folds = [...new Set(names.map(nameKey).filter(Boolean))];
+
+  if (folds.length === 0) return new Map();
+
+  const rows = await runner
+    .select()
+    .from(ingredients)
+    .where(
+      or(
+        inArray(sql`lower(${ingredients.name})`, lowers),
+        inArray(ingredients.normalizedName, folds),
+        sql`${ingredients.normalizedAltNames} && ${sql.param(folds)}::text[]`
+      )
+    );
+
+  const parsed = IngredientArraySchema.safeParse(rows);
+
+  if (!parsed.success) throw new Error("Failed to parse ingredients");
+
+  const best = new Map<string, { row: IngredientDto; rank: number }>();
+
+  for (const name of names) {
+    const fold = nameKey(name);
+
+    if (!fold) continue;
+
+    const lower = name.toLowerCase();
+
+    for (const row of parsed.data) {
+      const rank = matchRank(row, lower, fold);
+
+      if (rank === null) continue;
+
+      const held = best.get(fold);
+
+      // A stable winner where two rows answer alike, so the same name never
+      // lands on a different ingredient from one import to the next.
+      if (
+        !held ||
+        rank < held.rank ||
+        (rank === held.rank && row.name.toLowerCase() < held.row.name.toLowerCase())
+      ) {
+        best.set(fold, { row, rank });
+      }
+    }
+  }
+
+  return new Map([...best].map(([fold, { row }]) => [fold, row]));
+}
+
+/**
+ * The Ingredient Name each name is, minting the ones Norish has never seen.
+ * Keyed by the name's fold, because the row a name resolves to may be named
+ * something else entirely.
+ */
+async function resolveOrCreateIngredients(
+  runner: { select: typeof db.select; insert: typeof db.insert },
+  names: readonly string[]
+): Promise<Map<string, IngredientDto>> {
+  const resolved = await findIngredientsForNames(runner, names);
+  const missing = new Map<string, string>();
+
+  for (const name of names) {
+    const fold = nameKey(name);
+
+    if (fold && !resolved.has(fold) && !missing.has(fold)) missing.set(fold, name);
+  }
+
+  if (missing.size === 0) return resolved;
+
+  const minted = [...missing.values()];
+
+  await runner.insert(ingredients).values(ingredientNameRowValues(minted)).onConflictDoNothing();
+
+  for (const [fold, row] of await findIngredientsForNames(runner, minted)) {
+    resolved.set(fold, row);
+  }
+
+  return resolved;
 }
 
 function ensureNonEmptyName(name?: string): string {
@@ -84,108 +195,45 @@ export async function findIngredientById(id: string): Promise<IngredientDto | nu
   return parsed.success ? parsed.data : null;
 }
 
-async function findIngredientByName(name: string): Promise<IngredientDto | null> {
-  const cleaned = ensureNonEmptyName(name);
-  const rows = await db
-    .select()
-    .from(ingredients)
-    .where(eq(sql`lower(${ingredients.name})`, cleaned.toLowerCase()))
-    .limit(1);
-
-  const parsed = IngredientSelectBaseSchema.safeParse(rows[0]);
-
-  return parsed.success ? parsed.data : null;
-}
-
-async function createIngredient(name: string): Promise<IngredientDto> {
-  const cleaned = ensureNonEmptyName(name);
-
-  await db
-    .insert(ingredients)
-    .values(ingredientNameRowValues([cleaned]))
-    .onConflictDoNothing();
-
-  const after = await findIngredientByName(cleaned);
-
-  if (!after) throw new Error("Failed to create or fetch ingredient");
-
-  return after;
-}
-
+/** The Ingredient Name this name is, minting it where Norish has never seen it. */
 export async function getOrCreateIngredientByName(name: string): Promise<IngredientDto> {
   const cleaned = ensureNonEmptyName(name);
+  const found = (await resolveOrCreateIngredients(db, [cleaned])).get(nameKey(cleaned));
 
-  const existing = await findIngredientByName(cleaned);
+  if (!found) throw new Error("Failed to create or fetch ingredient");
 
-  if (existing) return existing;
-
-  return createIngredient(cleaned);
+  return found;
 }
 
-export async function findManyIngredientsByNames(names: string[]): Promise<IngredientDto[]> {
-  const cleaned = names.map(stripHtmlTags).filter((n) => n.length > 0);
-
-  if (cleaned.length === 0) return [];
-
-  const lowers = Array.from(new Set(cleaned.map((n) => n.toLowerCase())));
-
-  const rows = await db
-    .select()
-    .from(ingredients)
-    .where(inArray(sql`lower(${ingredients.name})`, lowers));
-
-  const parsed = IngredientArraySchema.safeParse(rows);
-
-  if (!parsed.success) throw new Error("Failed to parse ingredients");
-
-  return parsed.data;
-}
-
-export async function getOrCreateManyIngredients(names: string[]): Promise<IngredientDto[]> {
-  // Clean and drop empties; preserve original case
-  const cleaned = names.map(stripHtmlTags).filter((n) => n.length > 0);
-
-  if (cleaned.length === 0) return [];
-
-  return await db.transaction(async (tx) => {
-    await tx.insert(ingredients).values(ingredientNameRowValues(cleaned)).onConflictDoNothing();
-
-    const lowers = Array.from(new Set(cleaned.map((n) => n.toLowerCase())));
-
-    const rows = await tx
-      .select()
-      .from(ingredients)
-      .where(inArray(sql`lower(${ingredients.name})`, lowers));
-
-    const parsed = IngredientArraySchema.safeParse(rows);
-
-    if (!parsed.success) throw new Error("Failed to parse ingredients after insert");
-
-    return parsed.data;
-  });
-}
-
+/**
+ * The Ingredient Name each of these names is, keyed by the fold of the name as
+ * asked for. Callers look rows up by `ingredientKey(theirName)` rather than by
+ * the row's name, because the two differ whenever an Alternative Name matched.
+ */
 export async function getOrCreateManyIngredientsTx(
   tx: any,
   names: string[]
-): Promise<IngredientDto[]> {
+): Promise<Map<string, IngredientDto>> {
   const cleaned = names.map(stripHtmlTags).filter((n) => n.length > 0);
 
-  if (cleaned.length === 0) return [];
+  if (cleaned.length === 0) return new Map();
 
-  await tx.insert(ingredients).values(ingredientNameRowValues(cleaned)).onConflictDoNothing();
+  return await resolveOrCreateIngredients(tx, cleaned);
+}
 
-  const lowers = Array.from(new Set(cleaned.map((n) => n.toLowerCase())));
-  const rows = await tx
-    .select()
-    .from(ingredients)
-    .where(inArray(sql`lower(${ingredients.name})`, lowers));
+export async function getOrCreateManyIngredients(
+  names: string[]
+): Promise<Map<string, IngredientDto>> {
+  const cleaned = names.map(stripHtmlTags).filter((n) => n.length > 0);
 
-  const parsed = IngredientArraySchema.safeParse(rows);
+  if (cleaned.length === 0) return new Map();
 
-  if (!parsed.success) throw new Error("Failed to parse ingredients after insert (tx)");
+  return await db.transaction(async (tx) => resolveOrCreateIngredients(tx, cleaned));
+}
 
-  return parsed.data;
+/** The key a caller looks a resolved Ingredient Name up by. */
+export function ingredientKey(name: string): string {
+  return nameKey(name);
 }
 
 export async function attachIngredientsToRecipeByInputTx(
@@ -213,7 +261,8 @@ export async function attachIngredientsToRecipeByInputTx(
   const names = Array.from(
     new Set(itemsNeedingCreation.map((ri) => ri.ingredientName?.trim() ?? "").filter(Boolean))
   );
-  const createdIngredients = names.length > 0 ? await getOrCreateManyIngredientsTx(tx, names) : [];
+  const createdIngredients =
+    names.length > 0 ? await getOrCreateManyIngredientsTx(tx, names) : new Map();
 
   // Build rows for items that already have ingredientId
   const rowsWithExistingIds = itemsWithId.map((ri) => ({
@@ -228,13 +277,9 @@ export async function attachIngredientsToRecipeByInputTx(
   // Build rows for items that needed ingredient creation
   const rowsWithNewIngredients = itemsNeedingCreation
     .map((ri) => {
-      const ing =
-        createdIngredients.find(
-          (i) => i.name.toLowerCase().trim() === ri.ingredientName?.toLowerCase().trim()
-        ) ??
-        createdIngredients.find((i) =>
-          i.name.toLowerCase().includes(ri.ingredientName?.toLowerCase().trim() ?? "")
-        );
+      // By the name asked for, not by the row's name: an Alternative Name
+      // resolves to a row called something else.
+      const ing = createdIngredients.get(ingredientKey(ri.ingredientName?.trim() ?? ""));
 
       if (!ing) return null;
 

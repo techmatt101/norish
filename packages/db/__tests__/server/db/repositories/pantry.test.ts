@@ -10,6 +10,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   getOrCreateIngredientByName,
   getOrCreateManyIngredients,
+  ingredientKey,
   listIngredientNamesMissingNormalizedName,
   setIngredientNormalizedNames,
 } from "@norish/db/repositories/ingredients";
@@ -168,7 +169,8 @@ describe("pantry ingredients", () => {
   describe("the normalized-name backfill", () => {
     it("folds the names written before the folding existed, and the Pantry then matches them", async () => {
       const db = getTestDb();
-      const [creme] = await getOrCreateManyIngredients(["Crème Fraîche!", "yoghurt"]);
+      const resolved = await getOrCreateManyIngredients(["Crème Fraîche!", "yoghurt"]);
+      const creme = resolved.get(ingredientKey("Crème Fraîche!"));
 
       // Simulate rows written before the column existed.
       await db.update(ingredients).set({ normalizedName: null });

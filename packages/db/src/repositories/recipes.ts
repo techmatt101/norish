@@ -53,6 +53,7 @@ import {
   attachIngredientsToRecipeByInputTx,
   getOrCreateManyIngredientsTx,
   getUnitsForNormalization,
+  ingredientKey,
 } from "./ingredients";
 import { appliedOutcome, staleOutcome } from "./mutation-outcomes";
 import { getConfig } from "./server-config";
@@ -1315,16 +1316,16 @@ async function resolveRecipeIngredientIdsTx(
   const names = Array.from(
     new Set(inputs.map((item) => item.ingredientName?.trim() ?? "").filter(Boolean))
   );
-  const resolvedIngredients = names.length > 0 ? await getOrCreateManyIngredientsTx(tx, names) : [];
+  const resolvedIngredients =
+    names.length > 0 ? await getOrCreateManyIngredientsTx(tx, names) : new Map();
 
   return inputs.map((item) => ({
     ...item,
     ingredientId:
       item.ingredientId ??
-      resolvedIngredients.find(
-        (ingredient) =>
-          ingredient.name.toLowerCase().trim() === item.ingredientName?.toLowerCase().trim()
-      )?.id ??
+      // By the name asked for: an Alternative Name resolves to a row called
+      // something else, which is how "aubergine" becomes the Eggplant row.
+      resolvedIngredients.get(ingredientKey(item.ingredientName?.trim() ?? ""))?.id ??
       null,
   }));
 }

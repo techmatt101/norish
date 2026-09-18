@@ -1,6 +1,6 @@
 /**
  * Ingredient Name administration (ADR-0033): every name recipes have used,
- * with its picture.
+ * with its picture and Alternative Names.
  *
  * Only an administrator writes these. Every procedure delegates to the
  * ingredient-pictures repository or the illustration media module rather than
@@ -19,6 +19,7 @@ import {
   findIngredientForAdmin,
   listIngredientIdsMissingImage,
   listIngredientsForAdmin,
+  mergeIngredientInto,
   updateIngredientDetails,
 } from "@norish/db/repositories/ingredient-pictures";
 import { addIngredientIllustrationJob } from "@norish/queue/ingredient-illustration/producer";
@@ -55,6 +56,18 @@ function unwrap(result: IngredientDetailsWriteResult) {
         code: "CONFLICT",
         message: `"${result.name}" already belongs to ${result.ownerName}`,
         cause: { name: result.name, ownerName: result.ownerName },
+      });
+    case "is-an-ingredient":
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: `"${result.name}" is an ingredient of its own, used by ${result.owner.recipeCount} ${
+          result.owner.recipeCount === 1 ? "recipe" : "recipes"
+        }. Merge it in to take the name over.`,
+        cause: {
+          reason: "is-an-ingredient",
+          name: result.name,
+          owner: result.owner,
+        },
       });
     case "invalid-name":
       throw new TRPCError({
@@ -103,6 +116,38 @@ const update = adminProcedure
     log.info({ userId: ctx.user.id, ingredientId: input.id }, "Updating an Ingredient Name");
 
     return unwrap(await updateIngredientDetails(input));
+  });
+
+/**
+ * Fold one Ingredient Name into another: the merged name's recipe lines and
+ * Pantry Ingredients move across, its names stay as Alternative Names, and its
+ * row and picture go. This is how an administrator settles a duplicate that
+ * already exists, and it is deliberate — adding an Alternative Name that is
+ * already an ingredient is refused rather than doing this quietly.
+ */
+const merge = adminProcedure
+  .input(z.object({ sourceId: z.uuid(), targetId: z.uuid() }))
+  .mutation(async ({ ctx, input }) => {
+    log.info(
+      { userId: ctx.user.id, sourceId: input.sourceId, targetId: input.targetId },
+      "Merging an Ingredient Name into another"
+    );
+
+    const result = await mergeIngredientInto(input.sourceId, input.targetId);
+
+    switch (result.status) {
+      case "same":
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "An ingredient cannot be merged into itself",
+        });
+      case "not-found":
+        throw new TRPCError({ code: "NOT_FOUND", message: "Ingredient not found" });
+      case "ok":
+        if (result.strandedImageUrl) await sweepIngredientIllustrations(input.sourceId);
+
+        return result.ingredient;
+    }
   });
 
 /**
@@ -277,6 +322,7 @@ export const ingredientsAdminProcedures = router({
   list,
   create,
   update,
+  merge,
   delete: remove,
   uploadImage,
   removeImage,

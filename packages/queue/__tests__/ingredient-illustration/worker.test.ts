@@ -42,6 +42,7 @@ const { processIngredientIllustrationJob } =
 const ENTRY = {
   id: "entry-1",
   name: "Red onion",
+  altNames: ["red onions"],
   imageUrl: null,
   version: 1,
 };

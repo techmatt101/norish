@@ -28,7 +28,7 @@ export const adminRouter = router({
   // Cuisine vocabulary governance; the list itself is read from `config.cuisines`
   cuisines: cuisinesProcedures,
 
-  // Ingredient Names: pictures, and removing unused names
+  // Ingredient Names: pictures, Alternative Names, and removing unused names
   ingredients: ingredientsAdminProcedures,
 
   // Job queue monitoring

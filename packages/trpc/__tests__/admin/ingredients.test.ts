@@ -55,6 +55,7 @@ const ID = "11111111-1111-4111-8111-111111111111";
 const EGG = {
   id: ID,
   name: "Egg",
+  altNames: ["eggs"],
   imageUrl: null,
   version: 1,
   recipeCount: 0,
@@ -84,7 +85,7 @@ beforeEach(() => {
 
 describe("governance", () => {
   it("refuses every write to someone who is not an administrator", async () => {
-    expect(await codeOf(member.create({ name: "Egg" }))).toBe("FORBIDDEN");
+    expect(await codeOf(member.create({ name: "Egg", altNames: [] }))).toBe("FORBIDDEN");
     expect(await codeOf(member.generateImage({ id: ID }))).toBe("FORBIDDEN");
     expect(repository.createIngredientWithDetails).not.toHaveBeenCalled();
   });
@@ -99,7 +100,7 @@ describe("governance", () => {
   });
 
   it("lets any signed-in reader list every name", async () => {
-    const name = { id: ID, name: "Egg", imageUrl: "/e.webp" };
+    const name = { id: ID, name: "Egg", altNames: ["eggs"], imageUrl: "/e.webp" };
 
     repository.listIngredientNames.mockResolvedValue([name]);
 
@@ -115,7 +116,7 @@ describe("writes", () => {
   it("returns the created name", async () => {
     repository.createIngredientWithDetails.mockResolvedValue({ status: "ok", ingredient: EGG });
 
-    expect(await admin.create({ name: "Egg" })).toEqual(EGG);
+    expect(await admin.create({ name: "Egg", altNames: ["eggs"] })).toEqual(EGG);
   });
 
   it("names the ingredient a duplicate name already belongs to", async () => {
@@ -125,7 +126,7 @@ describe("writes", () => {
       ownerName: "Coriander",
     });
 
-    await expect(admin.create({ name: "Cilantro" })).rejects.toMatchObject({
+    await expect(admin.create({ name: "Cilantro", altNames: [] })).rejects.toMatchObject({
       code: "CONFLICT",
       message: '"cilantro" already belongs to Coriander',
     });
@@ -138,7 +139,9 @@ describe("writes", () => {
   ])("maps %o to %s", async (result, code) => {
     repository.updateIngredientDetails.mockResolvedValue(result);
 
-    expect(await codeOf(admin.update({ id: ID, version: 1, name: "Egg" }))).toBe(code);
+    expect(await codeOf(admin.update({ id: ID, version: 1, name: "Egg", altNames: [] }))).toBe(
+      code
+    );
   });
 
   it("sweeps a deleted name's pictures", async () => {
