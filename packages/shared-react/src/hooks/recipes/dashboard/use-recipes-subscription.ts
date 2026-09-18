@@ -26,6 +26,7 @@ export function createUseRecipesSubscription(
     const {
       setAllRecipesData,
       invalidate,
+      invalidateIngredientNames,
       replaceOldestOptimisticPendingRecipe,
       removePendingRecipe,
     } = dependencies.useRecipesCacheHelpers();
@@ -102,6 +103,7 @@ export function createUseRecipesSubscription(
           onData: ({ payload }: any) => {
             removePendingRecipe(payload.recipe.id);
             addRecipeToList(payload.recipe);
+            invalidateIngredientNames();
           },
         })
       )
@@ -126,6 +128,7 @@ export function createUseRecipesSubscription(
             replaceOldestOptimisticPendingRecipe(pendingId);
             removePendingRecipe(pendingId);
             addRecipeToList(payload.recipe);
+            invalidateIngredientNames();
             callbacks.onImported?.(payload);
           },
         })
@@ -144,6 +147,8 @@ export function createUseRecipesSubscription(
 
             if (payload.source !== "enrichment") {
               queryClient.invalidateQueries({ queryKey: [["calendar", "listRecipes"]] });
+              // An edited line can mint a name; enrichment never touches them.
+              invalidateIngredientNames();
             }
           },
         })
@@ -158,6 +163,8 @@ export function createUseRecipesSubscription(
             queryClient.invalidateQueries({
               queryKey: [["recipes", "get"], { input: { id: payload.id }, type: "query" }],
             });
+            // The names outlive the recipe; what changes is how many use them.
+            invalidateIngredientNames();
           },
         })
       )
@@ -232,6 +239,7 @@ export function createUseRecipesSubscription(
                 };
               }
             );
+            invalidateIngredientNames();
           },
         })
       )

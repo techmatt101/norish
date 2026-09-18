@@ -53,6 +53,20 @@ vi.mock("@/app/providers/trpc-provider", () => ({
         }),
       },
     },
+    // Recipe writes mint Ingredient Names, so the cache helpers reach their
+    // lists too (ADR-0033).
+    ingredients: {
+      list: {
+        queryKey: () => [["ingredients", "list"], { type: "query" }],
+      },
+    },
+    admin: {
+      ingredients: {
+        list: {
+          pathKey: () => [["admin", "ingredients", "list"]],
+        },
+      },
+    },
     recipes: {
       list: {
         queryKey: () => [["recipes", "list"], { input: {}, type: "query" }],
@@ -349,6 +363,49 @@ describe("useRecipesSubscription", () => {
           ],
         })
       );
+      expect(invalidateQueries).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("ingredient names", () => {
+    const namesKey = [["ingredients", "list"], { type: "query" }];
+    const adminNamesPath = [["admin", "ingredients", "list"]];
+
+    async function renderSubscription() {
+      queryClient.setQueryData(["recipes", "list", {}], createMockInfiniteData());
+      queryClient.setQueryData(["recipes", "pending"], []);
+
+      const { useRecipesSubscription } = await import("@/hooks/recipes/use-recipes-subscription");
+
+      renderHook(() => useRecipesSubscription(), { wrapper: createTestWrapper(queryClient) });
+    }
+
+    it.each([
+      ["onCreated", { recipe: createMockRecipe({ id: "recipe-1" }) }],
+      ["onImported", { recipe: createMockRecipe({ id: "recipe-1" }) }],
+      ["onDeleted", { id: "recipe-1" }],
+      ["onUpdated", { recipe: fullRecipe({ name: "Edited" }), source: "user" }],
+      ["onRecipeBatchCreated", { recipes: [createMockRecipe({ id: "recipe-2" })] }],
+    ])("re-reads the names a %s may have changed", async (event, payload) => {
+      await renderSubscription();
+
+      const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+
+      subscriptionCallbacks[event]?.(emitPayload(payload));
+
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: namesKey });
+      expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: adminNamesPath });
+    });
+
+    it("leaves them alone for an enrichment update, which cannot mint a name", async () => {
+      await renderSubscription();
+
+      const invalidateQueries = vi.spyOn(queryClient, "invalidateQueries");
+
+      subscriptionCallbacks.onUpdated?.(
+        emitPayload({ recipe: fullRecipe({ name: "Enriched" }), source: "enrichment" })
+      );
+
       expect(invalidateQueries).not.toHaveBeenCalled();
     });
   });
