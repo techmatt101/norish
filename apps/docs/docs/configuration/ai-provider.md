@@ -233,11 +233,13 @@ enrichment, automatic and manual. No AI request can bypass it.
 
 ![The Prompts panel in admin settings](/img/screenshots/admin-prompts.png)
 
-Every AI feature runs from an administrator-editable prompt, nine in total,
+Every AI feature runs from an administrator-editable prompt, twelve in total,
 listed together under **Settings => Admin => AI & Processing => Prompts**:
 recipe extraction, image extraction, unit conversion, nutrition estimation,
-auto-tagging, auto-categorization, allergy detection, Recipe Provenance, and
-Ingredient Linking. What you see there is exactly what is tunable; there are no
+auto-tagging, auto-categorization, allergy detection, Recipe Provenance,
+Ingredient Linking, the image brief and image style for Image Generation, and
+the Ingredient Illustration prompt that sets the style of
+[ingredient pictures](../recipes/ingredient-pictures.md). What you see there is exactly what is tunable; there are no
 hardcoded prompts behind it.
 
 Each feature appends its own input, the recipe under analysis, your
@@ -245,7 +247,7 @@ household's allergens, the webpage text, _after_ your prompt rather than
 filling placeholders inside it, so a customised prompt keeps working across
 upgrades and editing one prompt never changes what a different feature sends.
 A prompt left empty falls back to the shipped default, and **Restore defaults**
-brings all nine back at once.
+brings all twelve back at once.
 
 ## Video import
 

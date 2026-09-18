@@ -18,6 +18,7 @@ You can manage:
 - **OIDC claim mapping** for admin role assignment and household auto-join.
 - **Content detection settings** (units, content indicators, recurrence config).
 - **AI and video processing settings**.
+- **[Ingredients](../recipes/ingredient-pictures.md#managing-ingredients)** — every ingredient name recipes use, with its picture and other names.
 - **System scheduler** and server restart actions.
 
 :::tip
