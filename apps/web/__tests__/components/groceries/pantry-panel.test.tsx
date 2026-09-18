@@ -15,8 +15,8 @@ import type { PantryIngredientDto } from "@norish/shared/contracts";
 // is about the list itself, so no name has one.
 const known = vi.hoisted(() => ({
   ingredients: [
-    { id: "o", name: "Olive oil", imageUrl: "/o.webp" },
-    { id: "s", name: "Sea salt", imageUrl: null },
+    { id: "o", name: "Olive oil", altNames: ["extra virgin olive oil"], imageUrl: "/o.webp" },
+    { id: "s", name: "Sea salt", altNames: [], imageUrl: null },
   ],
 }));
 

@@ -280,7 +280,7 @@ function storedNameOf(text: string, units: UnitsMap): string {
 interface IngredientRowProps {
   item: IngredientItem;
   units: UnitsMap;
-  /** Every Ingredient Name Norish knows, for suggestions and the row's picture (ADR-0033). */
+  /** Ingredients with pictures or Alternative Names, for suggestions and the row's picture (ADR-0033). */
   known: readonly IngredientLookupEntry[];
   pictureLookup: IngredientLookup;
   suggestionsLabel: string;
@@ -334,6 +334,7 @@ function IngredientRow({
       return suggestIngredientNames(part.name, known).map((suggestion) => ({
         key: suggestion.key,
         label: suggestion.name,
+        detail: suggestion.matchedName,
         imageUrl: suggestion.imageUrl,
         apply: () => ({
           value: replaceIngredientLineName(value, part, suggestion.name),

@@ -10,17 +10,20 @@ const known = vi.hoisted(() => {
     {
       id: "f",
       name: "Flour",
+      altNames: ["plain flour"],
       imageUrl: "/ingredient-images/f.webp",
     },
     {
       id: "c",
       name: "Coriander",
+      altNames: ["cilantro"],
       imageUrl: null,
     },
-    // No picture: suggested all the same.
+    // No picture and no other names: suggested all the same.
     {
       id: "s",
       name: "Sea salt",
+      altNames: [],
       imageUrl: null,
     },
   ];
@@ -126,15 +129,16 @@ describe("IngredientInput", () => {
 
     const input = screen.getByPlaceholderText("placeholder") as HTMLTextAreaElement;
 
-    fireEvent.change(input, { target: { value: "cori" } });
+    fireEvent.change(input, { target: { value: "cila" } });
     fireEvent.keyDown(input, { key: "ArrowDown" });
     fireEvent.keyDown(input, { key: "Enter" });
 
-    // The Ingredient Name itself is inserted, so the line says what it means.
+    // The ingredient's own name, not the alternative that matched: typing
+    // "cilantro" resolves to Coriander anyway (ADR-0033).
     expect(input.value).toBe("Coriander");
 
     // Nothing highlighted: Enter is the row's own "next line" gesture.
-    fireEvent.change(input, { target: { value: "coriander and more cori" } });
+    fireEvent.change(input, { target: { value: "cilantro and more cila" } });
     fireEvent.keyDown(input, { key: "Enter" });
 
     expect(screen.getAllByRole("textbox")).toHaveLength(2);
@@ -179,7 +183,7 @@ describe("IngredientInput", () => {
 
     expect(screen.queryByTestId("ingredient-illustration")).not.toBeInTheDocument();
 
-    fireEvent.change(input, { target: { value: "500 g flour" } });
+    fireEvent.change(input, { target: { value: "500 g plain flour" } });
 
     expect(screen.getByTestId("ingredient-illustration")).toHaveAttribute(
       "src",

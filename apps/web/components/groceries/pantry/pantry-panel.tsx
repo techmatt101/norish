@@ -195,6 +195,7 @@ export function PantryPanel({ open, onOpenChange }: PantryPanelProps) {
               suggestions={suggestions.map((suggestion) => ({
                 key: suggestion.key,
                 label: suggestion.name,
+                detail: suggestion.matchedName,
                 imageUrl: suggestion.imageUrl,
               }))}
               onHighlight={setHighlighted}

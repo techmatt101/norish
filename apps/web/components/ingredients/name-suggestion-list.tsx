@@ -6,6 +6,8 @@ import { IngredientIllustration } from "@/components/recipes/ingredient-illustra
 export interface NameSuggestion {
   key: string;
   label: string;
+  /** The ingredient's own name, shown beside an Alternative Name that matched. */
+  detail?: string;
   imageUrl: string | null;
 }
 
@@ -75,6 +77,9 @@ export function NameSuggestionList({
             <IngredientIllustration imageUrl={suggestion.imageUrl} size="sm" />
           </span>
           <span className="min-w-0 truncate text-sm font-medium">{suggestion.label}</span>
+          {suggestion.detail && (
+            <span className="text-muted min-w-0 truncate text-xs">{suggestion.detail}</span>
+          )}
         </li>
       ))}
     </ul>

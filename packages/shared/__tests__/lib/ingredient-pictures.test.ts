@@ -8,35 +8,44 @@ import {
   suggestIngredientNames,
 } from "@norish/shared/lib/ingredient-pictures";
 
-const flour = { id: "f", name: "Flour", imageUrl: "/f.webp" };
-const coriander = { id: "c", name: "Coriander", imageUrl: null };
-const egg = { id: "e", name: "Eggs", imageUrl: "/e.webp" };
-const eggplant = { id: "p", name: "Aubergine", imageUrl: null };
+const flour = { id: "f", name: "Flour", altNames: ["plain flour"], imageUrl: "/f.webp" };
+const coriander = { id: "c", name: "Coriander", altNames: ["cilantro"], imageUrl: null };
+const egg = { id: "e", name: "Egg", altNames: ["eggs", "large eggs"], imageUrl: "/e.webp" };
+const eggplant = { id: "p", name: "Aubergine", altNames: ["eggplant"], imageUrl: null };
 const catalog = [flour, coriander, egg, eggplant];
 
 describe("findIngredientForName", () => {
   const lookup = buildIngredientLookup(catalog);
 
-  it("matches a name by the grocery folding, and nothing looser", () => {
+  it("matches names and their alternative names by the grocery folding", () => {
     expect(findIngredientForName(lookup, "flour")).toBe(flour);
     expect(findIngredientForName(lookup, "  EGGS! ")).toBe(egg);
+    expect(findIngredientForName(lookup, "Plain flour")).toBe(flour);
   });
 
   it("matches a name with no picture: a picture is not what makes a name known", () => {
     expect(findIngredientForName(lookup, "coriander")).toBe(coriander);
-    expect(findIngredientForName(lookup, "aubergine")).toBe(eggplant);
+    expect(findIngredientForName(lookup, "Cilantro")).toBe(coriander);
+    expect(findIngredientForName(lookup, "eggplant")).toBe(eggplant);
   });
 
   it("never matches a longer or looser name", () => {
     expect(findIngredientForName(lookup, "free-range eggs")).toBeNull();
-    expect(findIngredientForName(lookup, "plain flour")).toBeNull();
     expect(findIngredientForName(lookup, "flou")).toBeNull();
     expect(findIngredientForName(lookup, "")).toBeNull();
     expect(findIngredientForName(lookup, null)).toBeNull();
   });
 
-  it("keeps the first entry when two names fold alike", () => {
-    const other = { id: "x", name: "eggs!", imageUrl: "/x.webp" };
+  it("prefers a name's own form over another name's alternative name", () => {
+    const largeEggs = { id: "l", name: "Large eggs", altNames: [], imageUrl: "/l.webp" };
+
+    expect(findIngredientForName(buildIngredientLookup([egg, largeEggs]), "large eggs")).toBe(
+      largeEggs
+    );
+  });
+
+  it("keeps the first entry when two claim the same alternative name", () => {
+    const other = { id: "x", name: "Eggs again", altNames: ["eggs"], imageUrl: "/x.webp" };
     const stale = buildIngredientLookup([egg, other]);
 
     expect(findIngredientForName(stale, "eggs")).toBe(egg);
@@ -45,37 +54,41 @@ describe("findIngredientForName", () => {
 
 describe("suggestIngredientNames", () => {
   it("offers prefix matches before word and substring matches", () => {
-    const pepper = { id: "r", name: "Red pepper", imageUrl: null };
+    const pepper = { id: "r", name: "Red pepper", altNames: ["pepper, red"], imageUrl: null };
     const names = suggestIngredientNames("pe", [
       ...catalog,
       pepper,
-      { ...egg, id: "q", name: "Crêpe" },
+      { ...egg, id: "q", name: "Crêpe", altNames: [] },
     ]).map((s) => s.name);
 
+    // Offered under the ingredient's own name, whichever of its names matched.
     expect(names).toEqual(["Red pepper", "Crêpe"]);
   });
 
-  it("offers each entry once, with the picture it will show", () => {
+  it("offers each entry once, under its best matching name", () => {
     const suggestions = suggestIngredientNames("flo", catalog);
 
     expect(suggestions).toHaveLength(1);
     expect(suggestions[0]).toMatchObject({
       ingredientId: "f",
       name: "Flour",
+      matchedName: undefined,
       imageUrl: "/f.webp",
     });
   });
 
-  it("leaves out the entry a name already matches, but not longer names", () => {
-    const whites = { id: "n", name: "Eggs, white only", imageUrl: null };
-    const names = [...catalog, whites];
+  it("offers the ingredient itself when an alternative name matched, saying which", () => {
+    // Typing "cilantro" would resolve to Coriander anyway, so the line is
+    // offered the name it will mean.
+    expect(suggestIngredientNames("cila", catalog)[0]).toMatchObject({
+      name: "Coriander",
+      matchedName: "cilantro",
+    });
+  });
 
-    expect(suggestIngredientNames("egg", names).map((s) => s.name)).toEqual([
-      "Eggs",
-      "Eggs, white only",
-    ]);
-    // "Eggs" is what the line means already; the longer name is still offered.
-    expect(suggestIngredientNames("eggs", names).map((s) => s.name)).toEqual(["Eggs, white only"]);
+  it("leaves out the entry a name already matches, but not longer names", () => {
+    expect(suggestIngredientNames("egg", catalog).map((s) => s.name)).toEqual(["Aubergine"]);
+    expect(suggestIngredientNames("eggs", catalog)).toEqual([]);
   });
 
   it("offers nothing for a single character", () => {

@@ -24,6 +24,8 @@ export interface SmartTextInputIngredientSuggestion {
 export interface SmartTextInputNameSuggestion {
   key: string;
   label: string;
+  /** Said beside the label, such as the entry an alternative name belongs to. */
+  detail?: string;
   imageUrl?: string | null;
   /** The text once this suggestion is picked, and where the caret goes. */
   apply: () => { value: string; caret: number };
