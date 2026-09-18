@@ -30,15 +30,6 @@ import { normalizeUnit } from "@norish/shared/lib/unit-localization";
 
 const IngredientArraySchema = z.array(IngredientSelectBaseSchema);
 
-/**
- * The columns a new Ingredient Name row is written with: the name and its
- * folded form, which is what the Pantry matches on (ADR-0032). Used by every
- * path that mints Ingredient Names, so a name is folded the moment it exists.
- */
-function ingredientNameRowValues(names: readonly string[]) {
-  return names.map((name) => ({ name, normalizedName: normalizeGroceryName(name) }));
-}
-
 export async function getUnitsForNormalization(): Promise<UnitsMap> {
   const value = await getConfig<unknown>(ServerConfigKeys.UNITS);
 
@@ -64,6 +55,16 @@ export async function getUnitsForNormalization(): Promise<UnitsMap> {
   }
 
   return defaultUnits as UnitsMap;
+}
+
+/**
+ * The columns a new Ingredient Name row is written with: the name and its
+ * folded form, which is what the Pantry matches on (ADR-0032) and what lets a
+ * name show a picture (ADR-0033). Used by every path that mints Ingredient
+ * Names, so a name is folded the moment it exists.
+ */
+function ingredientNameRowValues(names: readonly string[]) {
+  return names.map((name) => ({ name, normalizedName: normalizeGroceryName(name) }));
 }
 
 function ensureNonEmptyName(name?: string): string {
