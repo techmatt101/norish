@@ -55,11 +55,19 @@ _Avoid_: Ingredient Link (suggests a hyperlink in the text rather than a usage r
 The Recipe Enrichment kind that infers Step Ingredients. It is a gap-filler in every case — automatic or manual, it only ever adds links to steps that have none, so it can never replace or remove what a person attached and needs no supplied-data suppression: a step that already has Step Ingredients is simply not its business. Heading rows are never linked. A step that genuinely uses nothing stays bare and may be examined again by later runs.
 
 **Ingredient Name**:
-The ingredient a recipe line points at, and the text that line shows. Names are de-duplicated as they are written, regardless of case: "eggs" and "Eggs" are one ingredient, "large eggs" another. An administrator can give it an Ingredient Illustration; a name a recipe uses or a Pantry holds cannot be deleted, and renaming it changes the text of every line that uses it.
+The ingredient a recipe line points at, and the text that line shows. Names are de-duplicated as they are written: regardless of case — "eggs" and "Eggs" are one, "large eggs" another — and through Alternative Names, so a line typed "aubergine" points at Eggplant and reads "Eggplant". An administrator can give it an Ingredient Illustration and Alternative Names; a name recipes use cannot be deleted, and renaming it changes the text of every line that uses it.
 _Avoid_: Ingredient Line (that is the recipe's row with its amount), Catalog Ingredient (the separate catalog this replaced)
 
+**Alternative Name**:
+Another way of writing an Ingredient Name that *is* that ingredient — "aubergine" on "Eggplant". A name written from now on resolves through it, so the recipe points at one row and one picture rather than minting a second of each; matching is exact under the grocery folding and nothing looser, so "free-range eggs" is its own ingredient until an administrator says otherwise (ADR-0034). It never appears on a recipe: a line shows the ingredient's own name. It applies to names written afterwards — an Alternative Name that is already an ingredient is refused, and settled by a Merge instead.
+_Avoid_: Alias, Synonym (both suggest a looser match than exact folding)
+
+**Merge**:
+Folding one Ingredient Name into another: its recipe lines and Pantry Ingredients move across, its name and its alternatives stay as Alternative Names of the survivor, and its row and picture go. It is how an administrator settles a duplicate that already exists, and it is always asked for — never a side effect of adding an Alternative Name, because it destroys a row that recipes point at.
+_Avoid_: Link, Alias (a Merge leaves one ingredient, not two related ones)
+
 **Ingredient Illustration**:
-The small picture belonging to an Ingredient Name, shown beside every line that points at it — and, for a grocery row, beside text that folds to its name — on a recipe's ingredient list, in cooking mode, on a step's ingredient chips, in the editor and on the grocery list — so an ingredient can be recognised at a glance. It is uploaded or drawn by AI from the name, square and in the one style its Prompt sets; unlike a Generated Image, nothing records which, because nothing acts on the difference. It is decoration beside the name, never a replacement for it.
+The small picture belonging to an Ingredient Name, shown beside every line that points at it — on a recipe's ingredient list, in cooking mode, on a step's ingredient chips, in the editor and on the grocery list — so an ingredient can be recognised at a glance. It is uploaded or drawn by AI from the name, square and in the one style its Prompt sets; unlike a Generated Image, nothing records which, because nothing acts on the difference. It is decoration beside the name, never a replacement for it.
 _Avoid_: Ingredient Icon (suggests a symbol set), Ingredient Image (a recipe's images are of the dish)
 
 **Image Generation**:

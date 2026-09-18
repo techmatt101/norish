@@ -27,20 +27,23 @@ export async function resetIngredientPicturesScenario(): Promise<void> {
   });
 }
 
-/** The stored Ingredient Name: its picture and what uses it. */
+/** The stored Ingredient Name: its picture, its Alternative Names and what uses it. */
 export async function readIngredient(
   name: string
-): Promise<{ imageUrl: string | null; recipeCount: number } | null> {
+): Promise<{ imageUrl: string | null; altNames: string[]; recipeCount: number } | null> {
   return await withDatabase(async (database) => {
     const result = await database.query(
-      `select i.image_url,
+      `select i.image_url, i.alt_names,
               (select count(distinct ri.recipe_id)::int from recipe_ingredients ri
                 where ri.ingredient_id = i.id) as recipe_count
          from ingredients i where i.name = $1`,
       [name]
     );
-    const row = result.rows[0] as { image_url: string | null; recipe_count: number } | undefined;
+    const row = result.rows[0] as
+      { image_url: string | null; alt_names: string[]; recipe_count: number } | undefined;
 
-    return row ? { imageUrl: row.image_url, recipeCount: row.recipe_count } : null;
+    return row
+      ? { imageUrl: row.image_url, altNames: row.alt_names, recipeCount: row.recipe_count }
+      : null;
   });
 }

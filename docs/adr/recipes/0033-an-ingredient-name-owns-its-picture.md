@@ -13,7 +13,7 @@ Nothing resolves a picture from text at read time on the server. The one place t
 - **A link per recipe line**, a nullable picture id on `recipe_ingredients` set by autocomplete or exact match on save. The line already has that link: `ingredient_id` is it.
 - **Fuzzy or word-subset matching** for the grocery row, so "extra virgin olive oil" finds "olive oil". It shows the wrong picture whenever the longer name is a different thing ("coconut milk" is not milk). Rejected, as ADR-0032 rejects it for the Pantry.
 - **Per-household pictures.** Pictures are drawn once per deployment and cost money per picture; households differ in what they cook, not in what an onion looks like. Rejected.
-- **Recognising that one food is here under two names** — "aubergine" and "eggplant" as separate rows, each drawn and billed separately. That is real, and it is a matching problem rather than a picture problem: it is about which row a name resolves to, which this ADR does not touch. Deliberately left to a decision of its own, so that a change to matching is reviewed and reverted as matching, not as pictures.
+- **Recognising that one food is here under two names** — "aubergine" and "eggplant" as separate rows, each drawn and billed separately. That is real, and it is a matching problem rather than a picture problem: it is about which row a name resolves to, which this ADR does not touch. Settled separately by ADR-0034, so that a change to matching is reviewed and reverted as matching, not as pictures.
 
 ## Consequences
 

@@ -856,6 +856,24 @@
             its own.
           </p>
         </li>
+        <li>
+          <a href="recipes/0034-an-alternative-name-resolves-to-the-ingredient-that-carries-it.md"
+            >ADR-0034 &mdash; An Alternative Name resolves to the Ingredient Name that carries
+            it</a
+          >
+          <p>
+            <b>Accepted.</b> One food under two names is closed where a name becomes an ingredient,
+            not where one is read: an Ingredient Name carries Alternative Names, and a name written
+            from now on resolves to the row that answers to it &mdash; its own name, its folded form
+            under the grocery folding, or one of that row's alternatives. A line then shows that
+            ingredient's name, so a recipe imported as "aubergine" reads "Eggplant". Alternatives
+            apply to names written afterwards; an existing duplicate is settled by an explicit
+            merge, which the administrator is offered rather than having it happen silently.
+            Rejects read-time matching, silent merging, fuzzy matching, rewriting existing rows and
+            per-locale alternatives; defers AI proposing alternatives, with ADR-0012's governance
+            shape if it is ever taken up.
+          </p>
+        </li>
       </ul>
 
       <h2>Validation policy</h2>

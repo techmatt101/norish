@@ -26,26 +26,38 @@ Pictures appear:
 ## How a line gets its picture
 
 Every ingredient your recipes use is kept on the server once, and your
-administrator can give it a picture.
+administrator can give it a picture and any number of **other names**.
 
 A line shows the picture of the ingredient it points at — that and nothing else.
-Which ingredient that is was decided when the recipe was saved or imported: the
-name you wrote is matched to an existing ingredient, ignoring capitals, and a
-name nothing matches becomes an ingredient of its own. The amount and unit are
-never part of the name, so `3 eggs` and `200 g eggs` are both eggs.
+The interesting part is how a name becomes an ingredient, which happens as the
+recipe is saved or imported: the name you wrote is looked up by itself, then by
+its other names. Matching ignores capitals, accents, punctuation and extra
+spaces, and nothing else: `Eggs!` is `eggs`, but `free-range eggs` is its own
+ingredient until someone adds it as another name. The amount and unit are never
+part of the name, so `3 eggs` and `200 g eggs` are both eggs.
+
+This is what keeps one food from becoming two. If `aubergine` is listed as
+another name for `Eggplant`, a recipe you import saying aubergine points at
+Eggplant, shows the Eggplant picture, and counts towards Eggplant — instead of
+starting a second ingredient that needs its own picture drawn.
 
 Because the line points at the ingredient, it also shows **that ingredient's
-name**. A recipe saying "olive oil" reads "Olive Oil" if that is how your server
-first recorded it.
+name**. A recipe imported as "aubergine" reads "Eggplant". This is the same
+thing that already happens with capitals, where a recipe saying "olive oil"
+reads "Olive Oil" if that is how your server first recorded it.
 
 Grocery items are different: you type them as free text, so they have no
-ingredient of their own. A grocery row finds its picture by its name, ignoring
-capitals, accents, punctuation and extra spaces — `Eggs!` finds `eggs`, while
-`free-range eggs` is a different thing and gets no picture.
+ingredient of their own. A grocery row finds its picture by its name, under the
+same matching — capitals, accents, punctuation and extra spaces ignored, and
+other names counted too.
 
 A few things follow:
 
-- Removing a picture takes it away everywhere at once.
+- Other names apply to recipes saved or imported **from then on**. Recipes that
+  already point at the older ingredient stay where they are; an administrator
+  can merge the two, which moves them across.
+- Removing a picture takes it away everywhere at once. Removing another name
+  stops future recipes resolving through it, and changes nothing already saved.
 - Imported recipes, including [Recipe Archives](./recipe-archive.md), resolve
   their names against the ingredients your server already has.
 
@@ -59,7 +71,9 @@ the name part of the line, after the amount and unit.
 ![The editor suggesting an ingredient while typing a line](/img/screenshots/ingredient-pictures-editor.png)
 
 - Click a suggestion, or use the arrow keys and press **Enter** or **Tab**, to
-  replace just the name. The amount and unit you typed stay as they are.
+  replace just the name. The amount and unit you typed stay as they are. If you
+  matched an ingredient by one of its other names, the suggestion says so and
+  inserts the ingredient's own name, which is what the line would mean anyway.
 - Press **Enter** without choosing a suggestion to move to the next line, as
   always.
 - Suggestions are optional. Any other name is saved exactly as you typed it, and
@@ -75,20 +89,29 @@ Item, this changes only your own view on that device.
 
 Administrators manage ingredients under Settings => Admin => **Ingredients**.
 Choose **Manage ingredients** to see every ingredient name your recipes use,
-with how many recipes use each. Search by name to find one.
+with how many recipes use each. Search by name or other name to find one.
 
 ![The Ingredients panel](/img/screenshots/ingredients-admin-panel.png)
 
 Edit an ingredient to change:
 
 - **Name**, which is the text recipes show. Renaming changes it in every recipe
-  that uses it, and the editor tells you how many that is first. A name can only
-  belong to one ingredient, so a rename onto a name another ingredient already
-  has is refused, naming that ingredient.
+  that uses it, and the editor tells you how many that is first.
+- **Other names**, every other way a recipe or shopping list writes it: plurals
+  (`egg`), other spellings (`yoghurt`, `yogurt`), other languages (`aubergine`),
+  or a common longer form (`large eggs`). Recipes saved from then on resolve
+  through them, so the food stays one ingredient with one picture.
+
+  A name can only belong to one ingredient. If the name you add is already an
+  ingredient in its own right, Norish says so, tells you how many recipes use
+  it, and offers to **merge** it in — which moves those recipes and any pantry
+  entries across, keeps its names as other names, and removes its row and
+  picture. Merging is never automatic: it is destructive, so it is always your
+  choice.
 - **Picture**, uploaded, pasted from the clipboard, or drawn by the image model.
   Pictures are cropped to a square.
 
-![Editing an ingredient: its name and picture](/img/screenshots/ingredients-admin-editor.png)
+![Editing an ingredient: its name, other names and picture](/img/screenshots/ingredients-admin-editor.png)
 
 **Add ingredient** creates a name no recipe uses yet, so it can have a picture
 ready ahead of time. An ingredient can only be deleted when no recipe uses it and
@@ -102,9 +125,9 @@ A drawing takes a moment and appears in the panel when it is ready. Generating
 again replaces the picture.
 
 **Generate missing pictures** draws every ingredient without a picture that a
-recipe uses. It tells you how many pictures that is before it starts, because
-each one is a separate request to your image provider. Ingredients already being
-drawn are not drawn twice.
+recipe uses or that has other names. It tells you how many pictures that is
+before it starts, because each one is a separate request to your image provider.
+Ingredients already being drawn are not drawn twice.
 
 Every picture is drawn from the **Ingredient Illustration Prompt**, which sets
 the style they share. You can edit it under Settings => Admin => AI &

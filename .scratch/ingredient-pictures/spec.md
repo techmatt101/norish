@@ -4,7 +4,7 @@ Status: implemented
 
 > **Revised 2026-09-17:** the separate Ingredient Catalog (two tables, a stored link, SQL relinking) was folded into `ingredients`. Pictures and Alternative Names now live on the Ingredient Names themselves and are matched at read time; the admin list shows every name; a used name cannot be deleted. The issues in `issues/` were written against the catalog model and are kept as history.
 >
-> **Split 2026-09-18:** Alternative Names and Merge were taken out of this feature and moved to a follow-up. They are an ingredient *matching* concern, not a picture concern: a picture is a column on the Ingredient Name, while an Alternative Name changes which row a line points at and what text it shows. This spec is kept as written; the sections about other names describe the follow-up, not what ships here.
+> **Split 2026-09-18:** Alternative Names and Merge ship as their own change on top of the pictures one, under ADR-0034. They are an ingredient *matching* concern, not a picture concern: a picture is a column on the Ingredient Name, while an Alternative Name changes which row a line points at and what text it shows. Matching also moved from read time to write time, so the sections here describing read-time resolution are history.
 
 ## Problem Statement
 

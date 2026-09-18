@@ -119,13 +119,13 @@ async function snap(name: string, fullPage = false): Promise<void> {
   if (DOCS) await page.screenshot({ path: path.join(DOCS, name), fullPage });
 }
 
-/** The recipe's own ingredient names, each given a picture. */
-const ENTRIES: Array<{ name: string; picture: string }> = [
-  { name: "eggs", picture: "Egg" },
-  { name: "tomatoes", picture: "Tomato" },
-  { name: "onion", picture: "Onion" },
-  { name: "garlic", picture: "Garlic" },
-  { name: "red pepper", picture: "Red pepper" },
+/** The recipe's own ingredient names, each given a picture and, for some, another name. */
+const ENTRIES: Array<{ name: string; picture: string; altNames: string[] }> = [
+  { name: "eggs", picture: "Egg", altNames: ["egg"] },
+  { name: "tomatoes", picture: "Tomato", altNames: ["tomato"] },
+  { name: "onion", picture: "Onion", altNames: ["onions"] },
+  { name: "garlic", picture: "Garlic", altNames: ["garlic cloves", "knoflook"] },
+  { name: "red pepper", picture: "Red pepper", altNames: ["red peppers"] },
 ];
 
 test("captures the ingredients panel and the editor", async () => {
@@ -147,6 +147,11 @@ test("captures the ingredients panel and the editor", async () => {
     await expect(
       page.getByRole("dialog").last().getByTestId("ingredient-illustration")
     ).toBeVisible();
+    for (const alt of entry.altNames) {
+      await page.getByTestId("ingredients-alt-name-input").fill(alt);
+      await page.getByTestId("ingredients-add-alt-name").click();
+    }
+
     if (entry.name === "garlic") await snap("ingredients-admin-editor.png");
 
     await page.getByTestId("ingredients-save").click();

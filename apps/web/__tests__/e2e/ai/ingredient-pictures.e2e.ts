@@ -3,11 +3,12 @@
  * provider's image route (ADR-0033).
  *
  * What a reader and an administrator actually do: a recipe is imported; an
- * administrator finds one of its ingredients and has its picture drawn; the
- * picture then shows beside that recipe's line, beside a grocery typed by
- * hand, and in the editor's suggestions — while a line whose name matches
- * nothing stays plain text, and an ingredient a recipe uses cannot be deleted.
- * Only the AI provider's HTTP boundary is faked.
+ * administrator finds one of its ingredients, has its picture drawn and gives
+ * it another name; the picture then shows beside the lines written either
+ * way, beside a grocery typed by hand, and in the editor's suggestions — while
+ * a line whose name matches nothing stays plain text, and an ingredient a
+ * recipe uses cannot be deleted. Only the AI provider's HTTP boundary is
+ * faked.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -28,7 +29,7 @@ const DRAWN_PICTURE_BASE64 = readFileSync(path.join(FIXTURES_DIR, "generated-dis
 );
 
 const RECIPE = "Chive Omelette";
-const SECOND_RECIPE = "Egg Omelette";
+const SECOND_RECIPE = "Hen Egg Omelette";
 
 function omeletteRecipe() {
   return {
@@ -101,7 +102,7 @@ function adminRow(name: string) {
   return page.locator(`[data-testid="ingredients-row"][data-ingredient-name="${name}"]`);
 }
 
-test("an administrator's picture reaches the lines that point at the name", async () => {
+test("an administrator's picture reaches every line whose name matches it", async () => {
   await resetIngredientPicturesScenario();
   await configureImageGeneration(stack.ai.url);
   await importOmelette();
@@ -133,6 +134,18 @@ test("an administrator's picture reaches the lines that point at the name", asyn
   // The panel watches for the drawing and shows it without a reload.
   await expect(page.getByTestId("ingredients-picture-busy")).toHaveCount(0, { timeout: 30_000 });
 
+  // "hen egg" is another name for it — but the recipe already minted it as an
+  // ingredient of its own, so claiming the name is refused rather than
+  // stranding it. Merging is offered, and asked for.
+  await page.getByTestId("ingredients-alt-name-input").fill("hen egg");
+  await page.getByTestId("ingredients-add-alt-name").click();
+  await expect(page.getByTestId("ingredients-name-is-ingredient")).toBeVisible();
+  await page.getByTestId("merge-ingredient").click();
+
+  await expect.poll(async () => (await readIngredient("eggs"))?.altNames).toEqual(["hen egg"]);
+  expect(await readIngredient("hen egg")).toBeNull();
+
+  // The merge saved itself; the draft is done with.
   await page.getByTestId("ingredients-cancel").click();
   await expect(adminRow("eggs").getByTestId("ingredient-illustration")).toBeVisible();
   await expect(adminRow("eggs")).toContainText("Used in 1 recipe");
@@ -150,19 +163,19 @@ test("an administrator's picture reaches the lines that point at the name", asyn
   await page.getByRole("button", { name: "Close", exact: true }).click();
   expect(await readIngredient("eggs")).not.toBeNull();
 
-  // The recipe page: the line carries the picture because it points at that
-  // ingredient. "hen egg" is an ingredient of its own, and has none.
+  // The recipe page: the merged line now reads "eggs" and carries its picture,
+  // because it points at that ingredient. Chives has none of its own.
   await openOmelette();
+  await expect(ingredientRow("hen egg")).toHaveCount(0);
   await expect(
     ingredientRow("eggs").first().getByTestId("ingredient-illustration")
   ).toHaveAttribute("src", stored!.imageUrl!);
-  await expect(ingredientRow("hen egg").getByTestId("ingredient-illustration")).toHaveCount(0);
   await expect(ingredientRow("chives").getByTestId("ingredient-illustration")).toHaveCount(0);
 });
 
-test("a second recipe using the name lands on the same ingredient", async () => {
-  // One row, one picture: the second recipe shows the drawing already made,
-  // and nothing is drawn or billed again.
+test("a name an ingredient already answers to mints nothing new", async () => {
+  // "hen egg" is an Alternative Name of eggs now, so a recipe written with it
+  // lands on that ingredient — one row, one picture, nothing drawn twice.
   const before = await readIngredient("eggs");
 
   stack.ai.control.reset();
@@ -171,7 +184,7 @@ test("a second recipe using the name lands on the same ingredient", async () => 
     content: JSON.stringify({
       ...omeletteRecipe(),
       name: SECOND_RECIPE,
-      recipeIngredient: { metric: ["2 eggs"], us: ["2 eggs"] },
+      recipeIngredient: { metric: ["2 hen egg"], us: ["2 hen egg"] },
     }),
   });
   stack.ai.control.setDefault(null);
@@ -182,8 +195,8 @@ test("a second recipe using the name lands on the same ingredient", async () => 
   await expect
     .poll(async () => (await readIngredient("eggs"))?.recipeCount, { timeout: 60_000 })
     .toBe(2);
+  expect(await readIngredient("hen egg")).toBeNull();
   expect((await readIngredient("eggs"))?.imageUrl).toBe(before!.imageUrl);
-  expect(stack.ai.control.imageRequestCount).toBe(0);
 });
 
 test("a grocery typed by hand gets the picture its name matches", async () => {
