@@ -764,7 +764,10 @@
       "imageGenerationBriefPlaceholder": "Prompt voor de visuele omschrijving...",
       "imageGenerationStyle": "Afbeeldingsstijl Prompt",
       "imageGenerationStyleDescription": "Wordt naar het afbeeldingsmodel gestuurd, met de visuele omschrijving erachter. Bepaalt de stijl die elke gegenereerde afbeelding deelt.",
-      "imageGenerationStylePlaceholder": "Prompt voor de afbeeldingsstijl..."
+      "imageGenerationStylePlaceholder": "Prompt voor de afbeeldingsstijl...",
+      "ingredientIllustrationStyle": "Ingrediëntillustratie Prompt",
+      "ingredientIllustrationStyleDescription": "Wordt naar het afbeeldingsmodel gestuurd, met de naam van het ingrediënt erachter. Bepaalt de stijl die elke ingrediëntafbeelding deelt.",
+      "ingredientIllustrationStylePlaceholder": "Prompt voor ingrediëntafbeeldingen..."
     },
     "unsavedChanges": "Niet-opgeslagen wijzigingen",
     "jsonEditor": {
@@ -826,7 +829,8 @@
         "ingredient-linking": "Ingrediëntkoppeling",
         "caldav-sync": "CalDAV sync",
         "scheduled-tasks": "Scheduled tasks",
-        "image-generation": "Afbeeldingen genereren"
+        "image-generation": "Afbeeldingen genereren",
+        "ingredient-illustration": "Ingrediëntafbeeldingen"
       },
       "summary": {
         "failed": "{count} failed"

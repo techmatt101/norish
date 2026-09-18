@@ -764,7 +764,10 @@
       "imageGenerationBriefPlaceholder": "Prompt til den visuelle beskrivelse...",
       "imageGenerationStyle": "Billedstil-prompt",
       "imageGenerationStyleDescription": "Sendes til billedmodellen med den visuelle beskrivelse tilføjet efter. Bestemmer det udtryk, alle genererede billeder deler.",
-      "imageGenerationStylePlaceholder": "Prompt til billedstilen..."
+      "imageGenerationStylePlaceholder": "Prompt til billedstilen...",
+      "ingredientIllustrationStyle": "Ingrediensillustration-prompt",
+      "ingredientIllustrationStyleDescription": "Sendes til billedmodellen med ingrediensens navn tilføjet efter. Bestemmer det udtryk, alle ingrediensbilleder deler.",
+      "ingredientIllustrationStylePlaceholder": "Prompt til ingrediensbilleder..."
     },
     "unsavedChanges": "Ugemte ændringer",
     "jsonEditor": {
@@ -826,7 +829,8 @@
         "ingredient-linking": "Ingredienstilknytning",
         "caldav-sync": "CalDAV sync",
         "scheduled-tasks": "Scheduled tasks",
-        "image-generation": "Billedgenerering"
+        "image-generation": "Billedgenerering",
+        "ingredient-illustration": "Ingrediensbilleder"
       },
       "summary": {
         "failed": "{count} failed"

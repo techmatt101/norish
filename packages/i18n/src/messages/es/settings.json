@@ -764,7 +764,10 @@
       "imageGenerationBriefPlaceholder": "Prompt para la descripción visual...",
       "imageGenerationStyle": "Prompt de estilo de imagen",
       "imageGenerationStyleDescription": "Se envía al modelo de imagen, con la descripción visual añadida después. Define el aspecto que comparten todas las imágenes generadas.",
-      "imageGenerationStylePlaceholder": "Prompt para el estilo de imagen..."
+      "imageGenerationStylePlaceholder": "Prompt para el estilo de imagen...",
+      "ingredientIllustrationStyle": "Prompt de ilustración de ingredientes",
+      "ingredientIllustrationStyleDescription": "Se envía al modelo de imagen, con el nombre del ingrediente añadido después. Define el aspecto que comparten todas las imágenes de ingredientes.",
+      "ingredientIllustrationStylePlaceholder": "Prompt para las imágenes de ingredientes..."
     },
     "unsavedChanges": "Cambios sin guardar",
     "jsonEditor": {
@@ -826,7 +829,8 @@
         "ingredient-linking": "Vinculación de ingredientes",
         "caldav-sync": "CalDAV sync",
         "scheduled-tasks": "Scheduled tasks",
-        "image-generation": "Generación de imágenes"
+        "image-generation": "Generación de imágenes",
+        "ingredient-illustration": "Imágenes de ingredientes"
       },
       "summary": {
         "failed": "{count} failed"

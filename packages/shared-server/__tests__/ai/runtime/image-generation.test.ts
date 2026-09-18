@@ -148,6 +148,21 @@ describe("generateImage", () => {
     expect(width).toBeGreaterThan(height ?? Number.NaN);
   });
 
+  it("draws an Ingredient Illustration square, from its own prompt", async () => {
+    await generateImage({
+      prompt: "ingredient-illustration-style",
+      sections: ["Red onion"],
+      shape: "square",
+    });
+
+    expect(captured[0]!.body.size).toBe("1024x1024");
+
+    const prompt = captured[0]!.body.prompt as string;
+
+    expect(prompt).toMatch(/illustration of one food ingredient/i);
+    expect(prompt).toMatch(/The ingredient:\s+Red onion$/);
+  });
+
   it("refuses non-retryably when AI is disabled, without a request", async () => {
     mockGetAIConfig.mockResolvedValue(aiConfig({ enabled: false }));
 

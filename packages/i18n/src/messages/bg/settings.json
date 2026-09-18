@@ -764,7 +764,10 @@
       "imageGenerationBriefPlaceholder": "Промпт за визуалното описание...",
       "imageGenerationStyle": "Промпт за стил на изображението",
       "imageGenerationStyleDescription": "Изпраща се на модела за изображения с добавеното визуално описание. Определя вида, общ за всички генерирани изображения.",
-      "imageGenerationStylePlaceholder": "Промпт за стила на изображението..."
+      "imageGenerationStylePlaceholder": "Промпт за стила на изображението...",
+      "ingredientIllustrationStyle": "Промпт за илюстрация на съставка",
+      "ingredientIllustrationStyleDescription": "Изпраща се на модела за изображения с добавеното име на съставката. Определя вида, общ за всички изображения на съставки.",
+      "ingredientIllustrationStylePlaceholder": "Промпт за изображенията на съставки..."
     },
     "unsavedChanges": "Незапазени промени",
     "jsonEditor": {
@@ -826,7 +829,8 @@
         "ingredient-linking": "Свързване на съставките",
         "caldav-sync": "Синхронизиране с CalDAV",
         "scheduled-tasks": "Планирани задачи",
-        "image-generation": "Генериране на изображения"
+        "image-generation": "Генериране на изображения",
+        "ingredient-illustration": "Картинки на съставки"
       },
       "summary": {
         "failed": "{count} неуспешни"
